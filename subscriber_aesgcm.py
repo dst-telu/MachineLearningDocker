@@ -174,5 +174,5 @@ def on_message(c, u, msg):
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-client.connect("35.238.54.189", 1883, 60)
+client.connect("[IP BROKER MQTT]", 1883, 60)
 client.loop_forever()
