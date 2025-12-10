@@ -26,7 +26,6 @@ sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin dock
 ### Pastikan Struktur file seperti ini
 ```
 ml_subscribers/
-   svm/
       subscriber_aesgcm.py
       model_svm.pkl
       scaler_new.pkl
