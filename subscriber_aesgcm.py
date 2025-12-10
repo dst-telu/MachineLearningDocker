@@ -6,25 +6,25 @@ import paho.mqtt.client as mqtt
 from joblib import load
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-# ── Konstanta ─────────────────────────────────────────────
+#Konstanta
 NONCE_LEN = 12
 AD        = b""
 
-# ── Mapping topik ke key [ISI DENGAN TOPIC DAN ENCRYPTION KEY, DIBAWAH INI HANYA CONTOH]
+#Mapping topik ke key [ISI DENGAN TOPIC DAN ENCRYPTION KEY, DIBAWAH INI HANYA CONTOH]
 TOPIC_KEYS = {
     "xCdVDs": bytes([0x60,0x3d,0xeb,0x10,0x15,0xca,0x71,0xbe,0x2b,0x73,0xae,0xf0,0x85,0x7d,0x77,0x81]),
 }
 
-# ── Model ML ──────────────────────────────────────────────
+#Model ML
 model  = load("model_svm_new.pkl")
 scaler = load("scaler_new.pkl")
 label_map = {0: "Diam", 1: "Jalan", 2: "Lari", 3: "Kendaraan"}
 
-# ── Rate-limit cache ─────────────────────────────────────
+#Rate-limit cache
 RATE_LIMIT = 1.0
 LAST_SEEN  = defaultdict(lambda: {"payload": None, "ts": 0.0})
 
-# ── Fungsi dekripsi ──────────────────────────────────────
+#Fungsi dekripsi
 def try_decrypt(enc_b64: bytes, key: bytes) -> str | None:
     try:
         enc = base64.b64decode(enc_b64, validate=True)
@@ -45,7 +45,7 @@ def try_decrypt(enc_b64: bytes, key: bytes) -> str | None:
         print(f" Decrypt gagal: {e}")
     return None
 
-# ── Callback MQTT ────────────────────────────────────────
+#Callback MQTT
 def on_connect(c, u, f, rc):
     print(" Terhubung ke broker MQTT, kode:", rc)
     c.subscribe("#")
@@ -62,7 +62,7 @@ def on_message(c, u, msg):
         print(f" Tidak ada key untuk token: {token}")
         return
 
-    # ⏱ Dekripsi
+    #Dekripsi
     t0_decrypt = time.perf_counter()
     plain = try_decrypt(msg.payload.strip(), key)
     t1_decrypt = time.perf_counter()
@@ -103,11 +103,11 @@ def on_message(c, u, msg):
         print(" Payload:", plain)
         return
 
-    # Cek token payload
+    #Cek token payload
     if token_rx != token:
         print(f" Token mismatch! MQTT={token}, Payload={token_rx}")
 
-    # --- Prediksi ML ---
+    #Prediksi ML
     data_scaled = scaler.transform([[x, y, z]])
     t0_ml = time.perf_counter()
     pred = model.predict(data_scaled)[0]
@@ -115,7 +115,7 @@ def on_message(c, u, msg):
     ml_time_ms = (t1_ml - t0_ml) * 1000
     aktivitas = label_map.get(pred, "Tidak diketahui")
 
-    # --- Output CSV ---
+    #Output CSV 
     csv_out = (
         f"{device_time},{batt_pct:.0f},"
         f"{lat:.5f},{lon:.5f},"
@@ -126,7 +126,7 @@ def on_message(c, u, msg):
 
     print(" Plaintext:", csv_out)
 
-    # ⏱ Enkripsi
+    #Enkripsi
     t0_encrypt = time.perf_counter()
     nonce_out   = os.urandom(NONCE_LEN)
     aesgcm_out  = AESGCM(key)
@@ -134,7 +134,7 @@ def on_message(c, u, msg):
     enc_payload = base64.b64encode(nonce_out + ct_tag_out).decode()
     t1_encrypt = time.perf_counter()
 
-    # ⏱ Publish
+    #Publish
     t0_pub = time.perf_counter()
     c.publish(f"hasil/{token}", enc_payload, qos=0, retain=True)
     t1_pub = time.perf_counter()
@@ -146,7 +146,7 @@ def on_message(c, u, msg):
     print(f" Kirim MQTT : {(t1_pub - t0_pub)*1000:.2f} ms")
     print("--------------------------------------------------")
 
-# ── Mulai MQTT client ────────────────────────────────────
+#Mulai MQTT client
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
