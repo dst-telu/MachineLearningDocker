@@ -43,3 +43,4 @@ untuk menjalankan gunakan
 ```
 sudo docker run --rm -it subscriber_svm
 ```
+untuk hentikan tinggal CTRL+C
